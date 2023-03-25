@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	clientsetCore "k8s.io/client-go/kubernetes"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -88,10 +89,11 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
-
+	coreClientSet := clientsetCore.NewForConfigOrDie(ctrl.GetConfigOrDie())
 	if err = (&controllers.GsminiLogReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		ClientsetCore: coreClientSet, //读取pod日志我们用的是client.go中的客户端
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GsminiLog")
 		os.Exit(1)
