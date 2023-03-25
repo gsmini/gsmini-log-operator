@@ -25,17 +25,19 @@ import (
 
 // GsminiLogSpec defines the desired state of GsminiLog
 type GsminiLogSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of GsminiLog. Edit gsminilog_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	LogDestination string `json:"log_destination,omitempty"` //日志目的地 oss|mysql|es
+	LogDestUri     string `json:"LogDestUri,omitempty"`      //链接地址 比如mysql://user@password:120.0.0.1/db_name
+	LogReportType  string `json:"log_report_type,omitempty"` //报警类型 dingding|feishu|phone|sms
+	LogReportUri   string `json:"log_report_uri,omitempty"`  //报警地址 比如:https://4da32r.feishu.com/xxxx 表示推送到非书这个地址
+	LogRule        string `json:"log_rule,omitempty"`        //报警规则匹配，会去正则表达匹配
 }
 
 // GsminiLogStatus defines the observed state of GsminiLog
 type GsminiLogStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	LogNumber      int64            //日志捕捉总条数
+	LogRuleNumber  map[string]int64 //触发报警条数条数 {"dingding":12,"feishu":20}
+	LogWriteNumber map[string]int64 //日志写入条数 {"oss":12,"es":20}
+
 }
 
 //+kubebuilder:object:root=true
