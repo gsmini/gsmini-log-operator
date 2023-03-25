@@ -7,4 +7,14 @@ layout:
 - go.kubebuilder.io/v3
 projectName: gsmini-log-operator
 repo: github.com/gsmini/gsmini-log-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: gsmini.cn
+  group: apps
+  kind: GsminiLog
+  path: github.com/gsmini/gsmini-log-operator/api/v1
+  version: v1
 version: "3"
