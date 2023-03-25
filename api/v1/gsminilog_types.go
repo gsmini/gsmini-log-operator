@@ -34,9 +34,9 @@ type GsminiLogSpec struct {
 
 // GsminiLogStatus defines the observed state of GsminiLog
 type GsminiLogStatus struct {
-	LogNumber      int64            //日志捕捉总条数
-	LogRuleNumber  map[string]int64 //触发报警条数条数 {"dingding":12,"feishu":20}
-	LogWriteNumber map[string]int64 //日志写入条数 {"oss":12,"es":20}
+	LogNumber      int64            `json:"log_number,omitempty"`       //日志捕捉总条数
+	LogRuleNumber  map[string]int64 `json:"log_rule_number,omitempty"`  //触发报警条数条数 {"dingding":12,"feishu":20}
+	LogWriteNumber map[string]int64 `json:"log_write_number,omitempty"` //日志写入条数 {"oss":12,"es":20}
 
 }
 
