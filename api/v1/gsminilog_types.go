@@ -26,7 +26,7 @@ import (
 // GsminiLogSpec defines the desired state of GsminiLog
 type GsminiLogSpec struct {
 	LogDestination string `json:"log_destination,omitempty"` //日志目的地 oss|mysql|es
-	LogDestUri     string `json:"LogDestUri,omitempty"`      //链接地址 比如mysql://user@password:120.0.0.1/db_name
+	LogDestUri     string `json:"log_dest_uri,omitempty"`    //链接地址 比如mysql://user@password:120.0.0.1/db_name
 	LogReportType  string `json:"log_report_type,omitempty"` //报警类型 dingding|feishu|phone|sms
 	LogReportUri   string `json:"log_report_uri,omitempty"`  //报警地址 比如:https://4da32r.feishu.com/xxxx 表示推送到非书这个地址
 	LogRule        string `json:"log_rule,omitempty"`        //报警规则匹配，会去正则表达匹配

@@ -18,13 +18,16 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/klog/v2"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	appsv1 "github.com/gsmini/gsmini-log-operator/api/v1"
+	gsminiv1 "github.com/gsmini/gsmini-log-operator/api/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	appsv1 "github.com/gsmini/gsmini-log-operator/api/v1"
 )
 
 // GsminiLogReconciler reconciles a GsminiLog object
@@ -47,10 +50,21 @@ type GsminiLogReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.1/pkg/reconcile
 func (r *GsminiLogReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	instance := &gsminiv1.GsminiLog{}
 
-	// TODO(user): your logic here
-
+	klog.Infof("[Reconcile call  start][ns:%v][GsminiLog:%v]", req.Namespace, req.Name)
+	err := r.Client.Get(context.TODO(), req.NamespacedName, instance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			klog.Errorf("[ Reconcile start missing be deleted][ns:%v][GsminiLog:%v]", req.Namespace, req.Name)
+			// 如果错误是不存在，那么可能是到调谐这里 就被删了
+			return reconcile.Result{}, nil
+		}
+		// 其它错误打印一下
+		klog.Errorf("[ Reconcile start other error][err:%v][ns:%v][GsminiLog:%v]", err, req.Namespace, req.Name)
+		return reconcile.Result{}, err
+	}
+	fmt.Println(instance.Spec)
 	return ctrl.Result{}, nil
 }
 
