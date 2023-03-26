@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	clientsetCore "k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"net/http"
@@ -43,9 +44,10 @@ import (
 // GsminiLogReconciler reconciles a GsminiLog object
 type GsminiLogReconciler struct {
 	client.Client
-	Scheme        *runtime.Scheme
-	ClientsetCore *clientsetCore.Clientset
-	sync.RWMutex  //并发写数据的时候可能会导致其他错误
+	Scheme          *runtime.Scheme
+	ClientsetCore   *clientsetCore.Clientset
+	sync.RWMutex    //并发写数据的时候可能会导致其他错误
+	NotifyDeleteMap map[string]string
 }
 
 //+kubebuilder:rbac:groups=apps.gsmini.cn,resources=gsminilogs,verbs=get;list;watch;create;update;patch;delete
@@ -79,27 +81,68 @@ func (r *GsminiLogReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	//真正获取pod的日志了
 	//1-先获取当前namespace的所有pod
-	// todo 这里是不合理的 需要把当前namespace所有的pod全部查询出来
-	opts := metav1.ListOptions{
-		Limit: 100,
-	}
-	podlist, err := r.ClientsetCore.CoreV1().Pods(instance.ObjectMeta.Namespace).List(ctx, opts)
+	// todo 这里是不合理的 需要把当前namespace所有的pod全部查询出来，目前只是查询limit=100 条
+	//需要注意的是代码启动的时候已经存在的pod对他来讲也算新增的，并不是说要先启动代码再操作yaml文件触发新增
+	watchHandler, err := r.ClientsetCore.CoreV1().Pods(instance.ObjectMeta.Namespace).Watch(context.TODO(), metav1.ListOptions{Limit: 100})
 
 	if err != nil {
 		return reconcile.Result{}, err
-
 	}
-	for _, item := range podlist.Items {
-		for _, container := range item.Spec.Containers {
-			go func(podName, containerName string) (ctrl.Result, error) {
-				//2-开go程 去消费数据
-				logOptions := &apiv1.PodLogOptions{
-					Container: containerName,
-					Follow:    true,
-				}
-				stream, err := r.ClientsetCore.CoreV1().Pods(instance.ObjectMeta.Namespace).GetLogs(podName, logOptions).Stream(context.TODO())
+	for {
+		for event := range watchHandler.ResultChan() {
+			//断言是来自pod事件的变化
+			pod, ok := event.Object.(*apiv1.Pod)
+			if !ok {
+				continue
+			}
+			// 判断event的类型
+			switch event.Type {
+
+			//ADDED新增 如果是新增就开协程去收集每个pod下的container日志
+			case watch.Added:
+				klog.Errorf("[pod watch 事件类型：%v ]", watch.Added)
+				go r.CollectPodLog(ctx, instance, instance.ObjectMeta.Namespace, pod.Name, pod.Spec.Containers)
+			// DELETED删除
+			//如果是删除 就往channel 放当前pod的name，消费者发现当前收到的channel中的名字是当前自己协助程序的名字就return 推出go程
+			case watch.Deleted:
+				//等待删除的podname
+				r.Lock()
+				r.NotifyDeleteMap[pod.Name] = pod.Name
+				r.Unlock()
+
+			default:
+				klog.Errorf("[pod watch 事件类型：%v ]", event.Type)
+
+			}
+
+		}
+	}
+
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *GsminiLogReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&appsv1.GsminiLog{}).
+		Complete(r)
+}
+
+// CollectPodLog 针对单个pod中container的日志收集函数
+func (r *GsminiLogReconciler) CollectPodLog(ctx context.Context, instance *gsminiv1.GsminiLog, PodNameSpace, PodName string, Containers []apiv1.Container) error {
+	go func() {
+		klog.Errorf("[pod 消费者开始消费:%s]", PodName)
+
+		for _, value := range Containers {
+			logOptions := &apiv1.PodLogOptions{
+				Follow:    true, // 对应kubectl logs -f参数
+				Container: value.Name,
+			}
+			err := func() error {
+				//监控某个ContainerName日志
+				stream, err := r.ClientsetCore.CoreV1().Pods(PodNameSpace).GetLogs(PodName, logOptions).Stream(context.TODO())
 				if err != nil {
-					return reconcile.Result{}, err
+
+					return err
 				}
 				defer stream.Close()
 				for {
@@ -118,19 +161,24 @@ func (r *GsminiLogReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					}
 
 				}
-			}(item.ObjectMeta.Name, container.Name)
+			}()
+			if err != nil {
+			}
 		}
 
+	}()
+	//一秒检查一次
+	tick := time.Tick(time.Second)
+	select {
+	case <-tick:
+		_, ok := r.NotifyDeleteMap[PodName]
+		//如果待删除map中有自己，说明当前go程可以退出了
+		klog.Errorf("[pod 消费者退出:%s]", PodName)
+		if ok {
+			return nil
+		}
 	}
-
-	return ctrl.Result{}, nil
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *GsminiLogReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&appsv1.GsminiLog{}).
-		Complete(r)
+	return nil
 }
 
 func WriteOss(msg string, instance *gsminiv1.GsminiLog) {
