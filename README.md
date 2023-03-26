@@ -1,19 +1,46 @@
 # gsmini-log-operator
-// TODO(user): Add simple overview of use/purpose
+一个日志收集的operator
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+一个日志收集的operator，支持数据源配置和报警目标配置。如输出到mysql，oss，es等，通过电话报警
+企业微信等。
+目前支持
+- oss日志写入
+- 飞书群报警通知
+
+
+![alt oss写入](docs/images/oss.png "oss写入")
+> oss文件写入
+
+![alt 飞书报警支持](docs/images/feishu.png "飞书报警支持")
+> 飞书报警支持
 
 ## Getting Started
-You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
-**Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
+
 
 ### Running on the cluster
 1. Install Instances of Custom Resources:
 
 ```sh
-kubectl apply -f config/samples/
+apiVersion: apps.gsmini.cn/v1
+kind: GsminiLog
+metadata:
+  name: gsminilog-sample 
+  namespace: default //会监控目标ns下面所有的contaner日志
+spec:
+    //输出到oss
+    log_destination: "oss" 
+    //aliyu oss配置
+    log_dest_uri: "endpoint|access key|access secret|bucket name"
+    //通知到飞书
+    log_report_type: "feishu"
+    //飞书机器人通知地址
+    log_report_uri: "https://xxxxxx/bot/v2/hook/xxxxxx"
+    //日志过滤规则目前没实现这个功能
+    log_rule: "*"
+
 ```
+> kubectl -f xx.yaml
 
 2. Build and push your image to the location specified by `IMG`:
 
@@ -41,8 +68,6 @@ UnDeploy the controller from the cluster:
 make undeploy
 ```
 
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
 
 ### How it works
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).

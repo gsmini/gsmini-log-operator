@@ -2,7 +2,10 @@
 FROM golang:1.19 as builder
 ARG TARGETOS
 ARG TARGETARCH
-
+ENV GO111MODULE=on \
+    GOPROXY=https://goproxy.cn,direct \
+    CGO_ENABLED=0 \
+    GOOS=linux
 WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod

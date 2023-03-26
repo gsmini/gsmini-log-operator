@@ -1,12 +1,11 @@
 apiVersion: apps.gsmini.cn/v1
 kind: GsminiLog
 metadata:
-  labels:
-    app.kubernetes.io/name: gsminilog
-    app.kubernetes.io/instance: gsminilog-sample
-    app.kubernetes.io/part-of: gsmini-log-operator
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: gsmini-log-operator
+  namespace: default
   name: gsminilog-sample
 spec:
-  # TODO(user): Add fields here
+    log_destination: "oss"
+    log_dest_uri: "oss-cn-shenzhen.aliyuncs.com|xxx|xxx|xxx"
+    log_report_type: "feishu"
+    log_report_uri: "https://open.larksuite.com/open-apis/bot/v2/hook/xxxxxx"
+    log_rule: "*"
