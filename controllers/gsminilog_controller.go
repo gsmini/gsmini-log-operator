@@ -175,6 +175,8 @@ func (r *GsminiLogReconciler) CollectPodLog(ctx context.Context, instance *gsmin
 		//如果待删除map中有自己，说明当前go程可以退出了
 		klog.Errorf("[pod 消费者退出:%s]", PodName)
 		if ok {
+			//等待10秒防止没完成数据写入的数据丢失
+			time.Sleep(time.Second * 20)
 			return nil
 		}
 	}
